@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lantern-lan"
+version = "0.1.0"
+description = "LAN inventory, diff, and risk tracker companion for network scanners."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Stuart McKay" }]
+dependencies = [
+  "click>=8.1",
+  "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+lantern = "lantern.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lantern"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]

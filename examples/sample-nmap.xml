@@ -1,0 +1,19 @@
+<?xml version='1.0'?>
+<nmaprun>
+  <host>
+    <status state="up" />
+    <address addr="192.168.1.20" addrtype="ipv4" />
+    <address addr="AA:BB:CC:00:11:22" addrtype="mac" vendor="CameraCorp" />
+    <hostnames><hostname name="ipc-cam" type="PTR" /></hostnames>
+    <ports>
+      <port protocol="tcp" portid="23">
+        <state state="open" />
+        <service name="telnet" product="BusyBox telnetd" />
+      </port>
+      <port protocol="tcp" portid="80">
+        <state state="open" />
+        <service name="http" product="Boa" version="0.94" />
+      </port>
+    </ports>
+  </host>
+</nmaprun>
