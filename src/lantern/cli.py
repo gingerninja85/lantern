@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 
 from lantern.inventory import Inventory
-from lantern.report import render_markdown_report
+from lantern.report import render_html_report, render_markdown_report
 
 
 @click.group()
@@ -55,8 +55,35 @@ def baseline(ctx: click.Context, name: str) -> None:
 
 @main.command("report")
 @click.option("--baseline", "baseline_name", default=None, help="Diff report against a baseline.")
+@click.option(
+    "--format",
+    "report_format",
+    type=click.Choice(["md", "html"]),
+    default="md",
+    show_default=True,
+    help="Report output format.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write report to a file instead of stdout.",
+)
 @click.pass_context
-def report(ctx: click.Context, baseline_name: str | None) -> None:
-    """Print a Markdown LAN report."""
+def report(
+    ctx: click.Context,
+    baseline_name: str | None,
+    report_format: str,
+    output_path: Path | None,
+) -> None:
+    """Print or write a LAN report."""
     inventory: Inventory = ctx.obj["inventory"]
-    click.echo(render_markdown_report(inventory, baseline=baseline_name), nl=False)
+    renderer = render_html_report if report_format == "html" else render_markdown_report
+    rendered = renderer(inventory, baseline=baseline_name)
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered, encoding="utf-8")
+        click.echo(f"wrote={output_path}")
+        return
+    click.echo(rendered, nl=False)

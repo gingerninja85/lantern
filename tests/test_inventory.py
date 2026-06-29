@@ -2,7 +2,7 @@ from pathlib import Path
 
 from lantern.inventory import Inventory, Observation, Port
 from lantern.risk import score_observation
-from lantern.report import render_markdown_report
+from lantern.report import render_html_report, render_markdown_report
 
 
 NMAP_XML = """<?xml version='1.0'?>
@@ -198,6 +198,31 @@ def test_markdown_report_contains_diff_and_recommendations(tmp_path: Path):
     report = render_markdown_report(inventory, baseline="before")
 
     assert "# Lantern LAN Report" in report
+    assert "High risk devices" in report
     assert "New ports" in report
     assert "tcp/23 telnet" in report
     assert "Move unknown or risky IoT devices to a guest/IoT VLAN" in report
+
+
+def test_html_report_contains_cyberpunk_dashboard_and_escapes_content(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+    inventory.record_observation(
+        Observation(
+            ip="192.168.1.66",
+            mac="AA:BB:CC:00:11:66",
+            hostname="<script>alert(1)</script>",
+            vendor="CameraCorp",
+            ports=[
+                Port(protocol="tcp", number=23, service="telnet", product="BusyBox telnetd"),
+                Port(protocol="tcp", number=80, service="http", product="Boa"),
+            ],
+        )
+    )
+
+    report = render_html_report(inventory)
+
+    assert "<!doctype html>" in report
+    assert "Light up" in report
+    assert "badge high" in report
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in report
+    assert "<script>alert(1)</script>" not in report

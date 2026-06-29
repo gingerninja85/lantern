@@ -15,6 +15,11 @@ dependencies = [
   "jinja2>=3.1",
 ]
 
+[project.urls]
+Homepage = "https://github.com/gingerninja85/lantern"
+Repository = "https://github.com/gingerninja85/lantern"
+Issues = "https://github.com/gingerninja85/lantern/issues"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",

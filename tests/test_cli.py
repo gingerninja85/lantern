@@ -39,10 +39,7 @@ def test_cli_ingest_and_report(tmp_path):
 def test_cli_ingest_arp_and_diff_report(tmp_path):
     csv_path = tmp_path / "arp.csv"
     db_path = tmp_path / "lantern.sqlite"
-    csv_path.write_text(
-        "ip,mac,hostname,vendor\n"
-        "192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple\n"
-    )
+    csv_path.write_text("ip,mac,hostname,vendor\n" "192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple\n")
 
     runner = CliRunner()
     ingest = runner.invoke(main, ["--db", str(db_path), "ingest-arp", str(csv_path)])
@@ -65,3 +62,25 @@ def test_cli_ingest_arp_and_diff_report(tmp_path):
     assert "New devices" in report.output
     assert "192.168.1.88" in report.output
     assert "CC:CC:CC:CC:CC:CC" in report.output
+
+
+def test_cli_ingest_and_html_report_output(tmp_path):
+    xml_path = tmp_path / "scan.xml"
+    db_path = tmp_path / "lantern.sqlite"
+    report_path = tmp_path / "report.html"
+    xml_path.write_text(NMAP_XML)
+
+    runner = CliRunner()
+    ingest = runner.invoke(main, ["--db", str(db_path), "ingest-nmap", str(xml_path)])
+    assert ingest.exit_code == 0
+
+    report = runner.invoke(
+        main,
+        ["--db", str(db_path), "report", "--format", "html", "--output", str(report_path)],
+    )
+
+    assert report.exit_code == 0
+    assert f"wrote={report_path}" in report.output
+    html = report_path.read_text()
+    assert "Lantern LAN Report" in html
+    assert "badge medium" in html
