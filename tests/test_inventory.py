@@ -41,6 +41,58 @@ def test_import_nmap_xml_tracks_device_by_mac_and_ports(tmp_path: Path):
     assert {port.number for port in device.ports} == {23, 80}
 
 
+def test_import_arp_csv_tracks_devices_without_ports(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+
+    result = inventory.ingest_arp_csv(
+        "ip,mac,hostname,vendor\n"
+        "192.168.1.44,00-11-22-aa-bb-cc,smart-plug,Espressif\n",
+        source="router-export",
+    )
+
+    assert result.devices_seen == 1
+    assert result.ports_seen == 0
+    device = inventory.get_device("00:11:22:AA:BB:CC")
+    assert device is not None
+    assert device.ip == "192.168.1.44"
+    assert device.hostname == "smart-plug"
+    assert device.vendor == "Espressif"
+    assert device.ports == []
+
+
+def test_arp_csv_diff_flags_new_mac_even_without_ports(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+    inventory.ingest_arp_csv(
+        "ip,mac,hostname,vendor\n192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple\n"
+    )
+    inventory.mark_baseline("before")
+
+    inventory.ingest_arp_csv(
+        "ip,mac,hostname,vendor\n"
+        "192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple\n"
+        "192.168.1.55,BB-BB-BB-BB-BB-BB,unknown,\n"
+    )
+    diff = inventory.diff_against_baseline("before")
+
+    assert len(diff.new_devices) == 1
+    assert diff.new_devices[0].mac == "BB:BB:BB:BB:BB:BB"
+    assert diff.new_devices[0].ip == "192.168.1.55"
+
+
+def test_arp_csv_accepts_windows_neighbor_export_headers(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+
+    result = inventory.ingest_arp_csv(
+        "IPAddress,LinkLayerAddress,State,InterfaceAlias\n"
+        "192.168.1.77,DD-EE-FF-00-11-22,Reachable,Wi-Fi\n"
+    )
+
+    assert result.devices_seen == 1
+    device = inventory.get_device("DD:EE:FF:00:11:22")
+    assert device is not None
+    assert device.ip == "192.168.1.77"
+
+
 def test_diff_flags_new_device_and_new_port(tmp_path: Path):
     inventory = Inventory(tmp_path / "lantern.sqlite")
     inventory.record_observation(

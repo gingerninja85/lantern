@@ -1,0 +1,4 @@
+ip,mac,hostname,vendor
+192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple
+192.168.1.44,00-11-22-aa-bb-cc,smart-plug,Espressif
+192.168.1.88,CCCCCCCCCCCC,unknown-device,

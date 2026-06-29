@@ -33,6 +33,16 @@ def ingest_nmap(ctx: click.Context, xml_file: Path) -> None:
     click.echo(f"devices_seen={result.devices_seen} ports_seen={result.ports_seen}")
 
 
+@main.command("ingest-arp")
+@click.argument("csv_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.pass_context
+def ingest_arp(ctx: click.Context, csv_file: Path) -> None:
+    """Ingest ARP/router/neighbor CSV with ip, mac, hostname, vendor columns."""
+    inventory: Inventory = ctx.obj["inventory"]
+    result = inventory.ingest_arp_csv(csv_file.read_text(), source=str(csv_file))
+    click.echo(f"devices_seen={result.devices_seen} ports_seen={result.ports_seen}")
+
+
 @main.command("baseline")
 @click.argument("name")
 @click.pass_context

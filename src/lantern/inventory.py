@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass, field
+import io
 from pathlib import Path
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -55,7 +57,21 @@ class InventoryDiff:
 
 
 def normalize_mac(mac: str | None) -> str | None:
-    return mac.upper() if mac else None
+    if not mac:
+        return None
+    cleaned = mac.strip().replace("-", ":").upper()
+    if len(cleaned) == 12 and ":" not in cleaned:
+        cleaned = ":".join(cleaned[i : i + 2] for i in range(0, 12, 2))
+    return cleaned
+
+
+def _first_present(row: dict[str, str], names: tuple[str, ...]) -> str | None:
+    lowered = {key.strip().lower(): value.strip() for key, value in row.items() if key is not None}
+    for name in names:
+        value = lowered.get(name)
+        if value:
+            return value
+    return None
 
 
 class Inventory:
@@ -198,6 +214,33 @@ class Inventory:
             devices += 1
             ports += len(parsed_ports)
         return IngestResult(devices_seen=devices, ports_seen=ports)
+
+    def ingest_arp_csv(self, csv_text: str, source: str = "arp-csv") -> IngestResult:
+        del source  # reserved for the evidence log planned after MVP
+        devices = 0
+        reader = csv.DictReader(io.StringIO(csv_text))
+        for row in reader:
+            ip = _first_present(row, ("ip", "ipaddress", "ip address", "address", "internet address"))
+            mac = _first_present(
+                row,
+                (
+                    "mac",
+                    "macaddress",
+                    "mac address",
+                    "physical address",
+                    "link-layer address",
+                    "linklayeraddress",
+                ),
+            )
+            if not ip:
+                continue
+            hostname = _first_present(row, ("hostname", "host", "name", "dns", "device", "comment"))
+            vendor = _first_present(row, ("vendor", "manufacturer", "oui"))
+            self.record_observation(
+                Observation(ip=ip, mac=normalize_mac(mac), hostname=hostname, vendor=vendor, ports=[])
+            )
+            devices += 1
+        return IngestResult(devices_seen=devices, ports_seen=0)
 
     def get_device(self, key: str) -> Observation | None:
         key = normalize_mac(key) or key
