@@ -135,9 +135,13 @@ class Inventory:
             )
 
     def record_observation(self, observation: Observation) -> None:
-        key = observation.key
         mac = normalize_mac(observation.mac)
         with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT device_key, mac FROM devices WHERE ip = ? ORDER BY mac IS NULL LIMIT 1",
+                (observation.ip,),
+            ).fetchone()
+            key = mac or (existing["device_key"] if existing is not None else observation.key)
             conn.execute(
                 """
                 INSERT INTO devices(device_key, ip, mac, hostname, vendor)

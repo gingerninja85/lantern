@@ -93,6 +93,36 @@ def test_arp_csv_accepts_windows_neighbor_export_headers(tmp_path: Path):
     assert device.ip == "192.168.1.77"
 
 
+def test_nmap_without_mac_merges_ports_into_existing_ip_device(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+    inventory.ingest_arp_csv(
+        "ip,mac,hostname,vendor\n192.168.1.97,00:11:32:2D:D4:8F,nas,Synology\n"
+    )
+
+    inventory.ingest_nmap_xml(
+        """<?xml version='1.0'?>
+<nmaprun>
+  <host>
+    <status state="up" />
+    <address addr="192.168.1.97" addrtype="ipv4" />
+    <ports>
+      <port protocol="tcp" portid="445">
+        <state state="open" />
+        <service name="microsoft-ds" product="Samba smbd" />
+      </port>
+    </ports>
+  </host>
+</nmaprun>
+"""
+    )
+
+    assert len(inventory.list_devices()) == 1
+    device = inventory.get_device("00:11:32:2D:D4:8F")
+    assert device is not None
+    assert device.ip == "192.168.1.97"
+    assert [port.number for port in device.ports] == [445]
+
+
 def test_diff_flags_new_device_and_new_port(tmp_path: Path):
     inventory = Inventory(tmp_path / "lantern.sqlite")
     inventory.record_observation(
@@ -132,6 +162,23 @@ def test_risk_score_flags_telnet_and_embedded_http():
     assert risk.level == "high"
     assert "Telnet exposed" in risk.findings
     assert "Embedded/admin HTTP service exposed" in risk.findings
+
+
+def test_risk_score_flags_rdp_and_rtsp_services():
+    observation = Observation(
+        ip="10.0.0.14",
+        mac="AA:BB:CC:DD:EE:FF",
+        ports=[
+            Port(protocol="tcp", number=3389, service="ms-wbt-server", product="Microsoft Terminal Services"),
+            Port(protocol="tcp", number=554, service="rtsp", product="webcam rtspd"),
+        ],
+    )
+
+    risk = score_observation(observation)
+
+    assert risk.level == "medium"
+    assert "RDP exposed" in risk.findings
+    assert "RTSP/video stream service exposed" in risk.findings
 
 
 def test_markdown_report_contains_diff_and_recommendations(tmp_path: Path):

@@ -14,10 +14,22 @@ class Risk:
 
 RISKY_PORTS = {
     23: "Telnet exposed",
-    445: "SMB exposed",
     139: "NetBIOS exposed",
+    445: "SMB exposed",
+    554: "RTSP/video stream service exposed",
     1900: "UPnP exposed",
+    3389: "RDP exposed",
     7547: "CPE WAN management exposed",
+}
+
+PORT_SCORES = {
+    23: 45,
+    3389: 35,
+    445: 25,
+    139: 20,
+    554: 20,
+    1900: 25,
+    7547: 45,
 }
 
 HTTP_ADMIN_HINTS = ("boa", "goahead", "lighttpd", "busybox", "mini_httpd", "webcam", "ip camera")
@@ -29,7 +41,7 @@ def score_observation(observation: Observation) -> Risk:
     for port in observation.ports:
         if port.number in RISKY_PORTS:
             findings.append(RISKY_PORTS[port.number])
-            score += 40 if port.number == 23 else 25
+            score += PORT_SCORES[port.number]
 
         service_blob = " ".join([port.service, port.product, port.version]).lower()
         if port.service in {"http", "https"} and any(hint in service_blob for hint in HTTP_ADMIN_HINTS):
