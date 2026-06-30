@@ -28,6 +28,7 @@ dev = [
 
 [project.scripts]
 lantern = "lantern.cli:main"
+lantern-gui = "lantern.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lantern"]

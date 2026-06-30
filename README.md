@@ -33,6 +33,7 @@ Most small network scanner projects stop at “here are the hosts and open ports
 - Merge WSL-style IP-only Nmap observations into MAC-backed ARP records.
 - Save named baselines and flag **new devices** and **new ports**.
 - Export inventory as **JSON or CSV**.
+- Optional **Tkinter GUI** for people who prefer buttons over command-line flags.
 - Score common home-network risks:
   - Telnet
   - SMB / NetBIOS
@@ -63,18 +64,20 @@ lantern report --baseline first-known-good --format html --output reports/lanter
 
 ## Windows executable
 
-Build a standalone Windows binary with PyInstaller from a Windows Python shell:
+Build standalone Windows binaries with PyInstaller from a Windows Python shell:
 
 ```powershell
 py -3 -m pip install --user pyinstaller hatchling click jinja2 pytest ruff
 py -3 -m pip install --user -e .
 py -3 -m pytest -q
 py -3 -m PyInstaller --clean --onefile --console --name lantern lantern_entry.py
+py -3 -m PyInstaller --clean --onefile --windowed --name lantern-gui lantern_gui_entry.py
 ```
 
 Run it from PowerShell:
 
 ```powershell
+.\lantern-gui.exe
 .\lantern.exe scan
 .\lantern.exe scan --save-baseline known-good
 .\lantern.exe scan --baseline known-good --output after.html
