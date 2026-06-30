@@ -25,11 +25,14 @@ Most small network scanner projects stop at “here are the hosts and open ports
 
 ## Features
 
+- Native **safe TCP connect scanner** for Windows/Linux without requiring Nmap.
+- Auto-discover Windows LAN devices from **Get-NetNeighbor** / local ARP evidence.
 - Ingest **Nmap XML** service scans.
 - Ingest **ARP/router/Windows neighbor CSV** exports.
 - Track devices by **MAC address** where available, falling back to IP when needed.
 - Merge WSL-style IP-only Nmap observations into MAC-backed ARP records.
 - Save named baselines and flag **new devices** and **new ports**.
+- Export inventory as **JSON or CSV**.
 - Score common home-network risks:
   - Telnet
   - SMB / NetBIOS
@@ -47,11 +50,35 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install -e '.[dev]'
 
+# Native scanner path: discovers neighbors, scans common ports, writes HTML.
+lantern --db home.sqlite scan --output reports/lantern.html
+
+# Existing-evidence path.
 lantern ingest-arp examples/sample-arp.csv
 lantern ingest-nmap examples/sample-nmap.xml
 lantern baseline first-known-good
 lantern report --baseline first-known-good
 lantern report --baseline first-known-good --format html --output reports/lantern.html
+```
+
+## Windows executable
+
+Build a standalone Windows binary with PyInstaller from a Windows Python shell:
+
+```powershell
+py -3 -m pip install --user pyinstaller hatchling click jinja2 pytest ruff
+py -3 -m pip install --user -e .
+py -3 -m pytest -q
+py -3 -m PyInstaller --clean --onefile --console --name lantern lantern_entry.py
+```
+
+Run it from PowerShell:
+
+```powershell
+.\lantern.exe scan
+.\lantern.exe scan --save-baseline known-good
+.\lantern.exe scan --baseline known-good --output after.html
+.\lantern.exe export --format csv --output devices.csv
 ```
 
 ## Real scan workflow

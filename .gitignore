@@ -4,6 +4,9 @@ __pycache__/
 .ruff_cache/
 .venv/
 dist/
+build/
+artifacts/
+*.spec
 *.egg-info/
 *.sqlite
 *.db
