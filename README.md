@@ -62,6 +62,16 @@ lantern report --baseline first-known-good
 lantern report --baseline first-known-good --format html --output reports/lantern.html
 ```
 
+## Screenshots
+
+### Desktop GUI
+
+![Lantern GUI showing scan controls and device inventory](docs/screenshots/lantern-gui.png)
+
+### HTML risk report
+
+![Lantern HTML report showing LAN inventory, risk badges, and findings](docs/screenshots/lantern-report.png)
+
 ## Windows executable
 
 Build standalone Windows binaries with PyInstaller from a Windows Python shell:

@@ -34,6 +34,7 @@ class LanternApp(tk.Tk):
         self._build_vars()
         self._build_style()
         self._build_ui()
+        self._refresh_inventory()
         self.after(100, self._poll_queue)
 
     def _build_vars(self) -> None:
