@@ -64,6 +64,39 @@ def test_cli_ingest_arp_and_diff_report(tmp_path):
     assert "CC:CC:CC:CC:CC:CC" in report.output
 
 
+def test_cli_label_device_and_export_context(tmp_path):
+    csv_path = tmp_path / "arp.csv"
+    db_path = tmp_path / "lantern.sqlite"
+    csv_path.write_text("ip,mac,hostname,vendor\n" "192.168.1.10,AA:AA:AA:AA:AA:AA,laptop,Apple\n")
+
+    runner = CliRunner()
+    ingest = runner.invoke(main, ["--db", str(db_path), "ingest-arp", str(csv_path)])
+    assert ingest.exit_code == 0
+
+    label = runner.invoke(
+        main,
+        [
+            "--db",
+            str(db_path),
+            "label",
+            "192.168.1.10",
+            "--label",
+            "Stu laptop",
+            "--owner",
+            "Stu",
+            "--notes",
+            "Allowed workstation",
+        ],
+    )
+    assert label.exit_code == 0, label.output
+    assert "labeled=192.168.1.10" in label.output
+
+    export = runner.invoke(main, ["--db", str(db_path), "export", "--format", "json"])
+    assert export.exit_code == 0
+    assert "Stu laptop" in export.output
+    assert "Allowed workstation" in export.output
+
+
 def test_cli_ingest_and_html_report_output(tmp_path):
     xml_path = tmp_path / "scan.xml"
     db_path = tmp_path / "lantern.sqlite"

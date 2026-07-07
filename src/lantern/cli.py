@@ -178,6 +178,9 @@ def _observation_to_dict(observation: Observation) -> dict[str, object]:
         "mac": observation.mac,
         "hostname": observation.hostname,
         "vendor": observation.vendor,
+        "label": observation.label,
+        "owner": observation.owner,
+        "notes": observation.notes,
         "ports": [
             {
                 "protocol": port.protocol,
@@ -189,6 +192,28 @@ def _observation_to_dict(observation: Observation) -> dict[str, object]:
             for port in observation.ports
         ],
     }
+
+
+@main.command("label")
+@click.argument("device")
+@click.option("--label", "label_value", default=None, help="Friendly device label, e.g. 'Living room camera'.")
+@click.option("--owner", default=None, help="Owner or function, e.g. 'Jessi', 'IoT', 'Network'.")
+@click.option("--notes", default=None, help="Short human note to include in exports and reports.")
+@click.pass_context
+def label_device(
+    ctx: click.Context,
+    device: str,
+    label_value: str | None,
+    owner: str | None,
+    notes: str | None,
+) -> None:
+    """Attach a friendly label, owner, or note to a device by IP or MAC."""
+    inventory: Inventory = ctx.obj["inventory"]
+    try:
+        inventory.label_device(device, label=label_value, owner=owner, notes=notes)
+    except KeyError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"labeled={device}")
 
 
 @main.command("report")

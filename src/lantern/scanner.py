@@ -246,13 +246,16 @@ def probe_banner(sock: socket.socket, port: int) -> str:
 def observations_to_csv(observations: Iterable[Observation]) -> str:
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["ip", "mac", "hostname", "vendor", "ports"])
+    writer.writerow(["ip", "mac", "hostname", "vendor", "label", "owner", "notes", "ports"])
     for obs in observations:
         writer.writerow([
             obs.ip,
             obs.mac or "",
             obs.hostname or "",
             obs.vendor or "",
+            obs.label or "",
+            obs.owner or "",
+            obs.notes or "",
             ";".join(str(port.number) for port in obs.ports),
         ])
     return buffer.getvalue()

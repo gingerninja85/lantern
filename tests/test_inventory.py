@@ -123,6 +123,46 @@ def test_nmap_without_mac_merges_ports_into_existing_ip_device(tmp_path: Path):
     assert [port.number for port in device.ports] == [445]
 
 
+def test_device_label_owner_and_notes_survive_rescan_and_appear_in_reports(tmp_path: Path):
+    inventory = Inventory(tmp_path / "lantern.sqlite")
+    inventory.ingest_arp_csv(
+        "ip,mac,hostname,vendor\n192.168.1.97,00:11:32:2D:D4:8F,nas,Synology\n"
+    )
+
+    inventory.label_device(
+        "192.168.1.97",
+        label="Garage NAS",
+        owner="Stu",
+        notes="Move to storage VLAN after backup test",
+    )
+    inventory.ingest_nmap_xml(
+        """<?xml version='1.0'?>
+<nmaprun>
+  <host>
+    <status state="up" />
+    <address addr="192.168.1.97" addrtype="ipv4" />
+    <ports>
+      <port protocol="tcp" portid="445">
+        <state state="open" />
+        <service name="microsoft-ds" product="Samba smbd" />
+      </port>
+    </ports>
+  </host>
+</nmaprun>
+"""
+    )
+
+    device = inventory.get_device("00:11:32:2D:D4:8F")
+    assert device is not None
+    assert device.label == "Garage NAS"
+    assert device.owner == "Stu"
+    assert device.notes == "Move to storage VLAN after backup test"
+
+    report = render_markdown_report(inventory)
+    assert "Garage NAS" in report
+    assert "Move to storage VLAN after backup test" in report
+
+
 def test_diff_flags_new_device_and_new_port(tmp_path: Path):
     inventory = Inventory(tmp_path / "lantern.sqlite")
     inventory.record_observation(

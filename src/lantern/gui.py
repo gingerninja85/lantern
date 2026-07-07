@@ -128,17 +128,19 @@ class LanternApp(tk.Tk):
             ttk.Label(parent, text="?", style="Panel.TLabel").grid(row=row, column=2, sticky="w", pady=5)
 
     def _build_results(self, parent: ttk.Frame) -> None:
-        columns = ("ip", "mac", "hostname", "vendor", "risk", "ports")
+        columns = ("ip", "label", "owner", "mac", "hostname", "vendor", "risk", "ports")
         self.tree = ttk.Treeview(parent, columns=columns, show="headings")
         headings = {
             "ip": "IP",
+            "label": "Label",
+            "owner": "Owner",
             "mac": "MAC",
             "hostname": "Hostname",
             "vendor": "Vendor / Interface",
             "risk": "Risk",
             "ports": "Open ports",
         }
-        widths = {"ip": 120, "mac": 150, "hostname": 150, "vendor": 160, "risk": 100, "ports": 300}
+        widths = {"ip": 110, "label": 150, "owner": 100, "mac": 150, "hostname": 140, "vendor": 150, "risk": 90, "ports": 260}
         for col in columns:
             self.tree.heading(col, text=headings[col])
             self.tree.column(col, width=widths[col], minwidth=80, stretch=col == "ports")
@@ -253,6 +255,8 @@ class LanternApp(tk.Tk):
                 tk.END,
                 values=(
                     obs.ip,
+                    obs.label or "",
+                    obs.owner or "",
                     obs.mac or "",
                     obs.hostname or "",
                     obs.vendor or "",
@@ -276,6 +280,9 @@ class LanternApp(tk.Tk):
                         "mac": d.mac,
                         "hostname": d.hostname,
                         "vendor": d.vendor,
+                        "label": d.label,
+                        "owner": d.owner,
+                        "notes": d.notes,
                         "ports": [p.__dict__ for p in d.ports],
                     }
                     for d in devices

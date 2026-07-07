@@ -24,10 +24,10 @@ REPORT_TEMPLATE = Template(
 
 ## Inventory
 
-| IP | MAC | Hostname | Vendor | Risk | Services |
-|---|---|---|---|---|---|
+| IP | Label | Owner | MAC | Hostname | Vendor | Risk | Services | Notes |
+|---|---|---|---|---|---|---|---|---|
 {% for row in rows -%}
-| {{ row.device.ip }} | {{ row.device.mac or "" }} | {{ row.device.hostname or "" }} | {{ row.device.vendor or "" }} | {{ row.risk.level }} ({{ row.risk.score }}) | {{ row.services }} |
+| {{ row.device.ip }} | {{ row.device.label or "" }} | {{ row.device.owner or "" }} | {{ row.device.mac or "" }} | {{ row.device.hostname or "" }} | {{ row.device.vendor or "" }} | {{ row.risk.level }} ({{ row.risk.score }}) | {{ row.services }} | {{ row.device.notes or "" }} |
 {% endfor %}
 {% if baseline %}
 ## Changes vs `{{ baseline }}`
@@ -132,7 +132,7 @@ h1 { margin: 10px 0 10px; font-size: clamp(2.4rem, 8vw, 5.4rem); line-height: 0.
 section { margin-top: 28px; padding: 24px; border: 1px solid var(--border); border-radius: 22px; background: var(--panel); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22); }
 h2 { margin: 0 0 18px; letter-spacing: -0.03em; }
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 820px; }
+table { width: 100%; border-collapse: collapse; min-width: 1080px; }
 th, td { text-align: left; padding: 13px 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); vertical-align: top; }
 th { color: var(--cyan); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; }
 code, .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
@@ -168,16 +168,19 @@ a { color: var(--cyan); }
     <h2>Inventory</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Vendor</th><th>Risk</th><th>Services</th></tr></thead>
+        <thead><tr><th>IP</th><th>Label</th><th>Owner</th><th>MAC</th><th>Hostname</th><th>Vendor</th><th>Risk</th><th>Services</th><th>Notes</th></tr></thead>
         <tbody>
         {% for row in rows %}
           <tr>
             <td class="mono">{{ row.device.ip|e }}</td>
+            <td>{{ (row.device.label or "")|e }}</td>
+            <td>{{ (row.device.owner or "")|e }}</td>
             <td class="mono">{{ (row.device.mac or "")|e }}</td>
             <td>{{ (row.device.hostname or "")|e }}</td>
             <td>{{ (row.device.vendor or "")|e }}</td>
             <td><span class="badge {{ row.risk.level }}">{{ row.risk.level }} {{ row.risk.score }}</span></td>
             <td>{{ row.services|e }}</td>
+            <td>{{ (row.device.notes or "")|e }}</td>
           </tr>
         {% endfor %}
         </tbody>

@@ -25,6 +25,7 @@ Most small network scanner projects stop at “here are the hosts and open ports
 
 ## Features
 
+- Attach human labels, owners, and notes to devices by IP or MAC.
 - Native **safe TCP connect scanner** for Windows/Linux without requiring Nmap.
 - Auto-discover Windows LAN devices from **Get-NetNeighbor** / local ARP evidence.
 - Ingest **Nmap XML** service scans.
@@ -57,6 +58,7 @@ lantern --db home.sqlite scan --output reports/lantern.html
 # Existing-evidence path.
 lantern ingest-arp examples/sample-arp.csv
 lantern ingest-nmap examples/sample-nmap.xml
+lantern label 192.168.1.20 --label "Living room camera" --owner "IoT" --notes "Move to guest VLAN"
 lantern baseline first-known-good
 lantern report --baseline first-known-good
 lantern report --baseline first-known-good --format html --output reports/lantern.html
@@ -119,6 +121,7 @@ lantern --db home.sqlite report --baseline known-good --format html --output rep
 |---|---|
 | `lantern ingest-arp arp.csv` | Ingest ARP/router/neighbor CSV into SQLite inventory |
 | `lantern ingest-nmap scan.xml` | Ingest Nmap XML into SQLite inventory |
+| `lantern label DEVICE --label NAME --owner OWNER --notes TEXT` | Attach human context to a device by IP or MAC |
 | `lantern baseline NAME` | Save current inventory as a named baseline |
 | `lantern report [--baseline NAME]` | Print a Markdown risk/change report |
 | `lantern report --format html --output report.html` | Write a standalone styled HTML dashboard |
@@ -166,8 +169,8 @@ python -m ruff check .
 
 ## Roadmap
 
-- Device labels/owners and notes.
-- JSON/CSV export.
+- ✅ Device labels/owners and notes.
+- ✅ JSON/CSV export.
 - OUI vendor enrichment.
 - Report screenshots/assets for GitHub README polish.
 - Optional lightweight web dashboard.

@@ -28,6 +28,9 @@ class Observation:
     mac: str | None = None
     hostname: str | None = None
     vendor: str | None = None
+    label: str | None = None
+    owner: str | None = None
+    notes: str | None = None
     ports: list[Port] = field(default_factory=list)
 
     @property
@@ -74,6 +77,10 @@ def _first_present(row: dict[str, str], names: tuple[str, ...]) -> str | None:
     return None
 
 
+def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    return any(row["name"] == column for row in conn.execute(f"PRAGMA table_info({table})"))
+
+
 class Inventory:
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path)
@@ -95,6 +102,9 @@ class Inventory:
                     mac TEXT,
                     hostname TEXT,
                     vendor TEXT,
+                    label TEXT,
+                    owner TEXT,
+                    notes TEXT,
                     first_seen TEXT DEFAULT CURRENT_TIMESTAMP,
                     last_seen TEXT DEFAULT CURRENT_TIMESTAMP
                 );
@@ -133,6 +143,9 @@ class Inventory:
                 );
                 """
             )
+            for column in ("label", "owner", "notes"):
+                if not _column_exists(conn, "devices", column):
+                    conn.execute(f"ALTER TABLE devices ADD COLUMN {column} TEXT")
 
     def record_observation(self, observation: Observation) -> None:
         mac = normalize_mac(observation.mac)
@@ -144,16 +157,28 @@ class Inventory:
             key = mac or (existing["device_key"] if existing is not None else observation.key)
             conn.execute(
                 """
-                INSERT INTO devices(device_key, ip, mac, hostname, vendor)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO devices(device_key, ip, mac, hostname, vendor, label, owner, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(device_key) DO UPDATE SET
                     ip = excluded.ip,
                     mac = COALESCE(excluded.mac, devices.mac),
                     hostname = COALESCE(excluded.hostname, devices.hostname),
                     vendor = COALESCE(excluded.vendor, devices.vendor),
+                    label = COALESCE(excluded.label, devices.label),
+                    owner = COALESCE(excluded.owner, devices.owner),
+                    notes = COALESCE(excluded.notes, devices.notes),
                     last_seen = CURRENT_TIMESTAMP
                 """,
-                (key, observation.ip, mac, observation.hostname, observation.vendor),
+                (
+                    key,
+                    observation.ip,
+                    mac,
+                    observation.hostname,
+                    observation.vendor,
+                    observation.label,
+                    observation.owner,
+                    observation.notes,
+                ),
             )
             for port in observation.ports:
                 conn.execute(
@@ -265,8 +290,45 @@ class Inventory:
                 )
             ]
         return Observation(
-            ip=row["ip"], mac=row["mac"], hostname=row["hostname"], vendor=row["vendor"], ports=ports
+            ip=row["ip"],
+            mac=row["mac"],
+            hostname=row["hostname"],
+            vendor=row["vendor"],
+            label=row["label"],
+            owner=row["owner"],
+            notes=row["notes"],
+            ports=ports,
         )
+
+    def label_device(
+        self,
+        key: str,
+        *,
+        label: str | None = None,
+        owner: str | None = None,
+        notes: str | None = None,
+    ) -> None:
+        """Attach human context to a known device without changing scan evidence."""
+        normalized_key = normalize_mac(key) or key
+        updates: list[str] = []
+        values: list[str] = []
+        for column, value in (("label", label), ("owner", owner), ("notes", notes)):
+            if value is not None:
+                updates.append(f"{column} = ?")
+                values.append(value.strip() or "")
+        if not updates:
+            return
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT device_key FROM devices WHERE device_key = ? OR ip = ?",
+                (normalized_key, key),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"device not found: {key}")
+            conn.execute(
+                f"UPDATE devices SET {', '.join(updates)}, last_seen = CURRENT_TIMESTAMP WHERE device_key = ?",
+                (*values, row["device_key"]),
+            )
 
     def list_devices(self) -> list[Observation]:
         with self._connect() as conn:
