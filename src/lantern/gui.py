@@ -6,6 +6,7 @@ import queue
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinter import simpledialog
 from typing import Any
 import webbrowser
 
@@ -31,6 +32,7 @@ class LanternApp(tk.Tk):
         self.configure(bg="#070912")
         self._queue: queue.Queue[tuple[str, object]] = queue.Queue()
         self._last_report: Path | None = None
+        self._tree_devices: dict[str, Observation] = {}
         self._build_vars()
         self._build_style()
         self._build_ui()
@@ -145,6 +147,8 @@ class LanternApp(tk.Tk):
             self.tree.heading(col, text=headings[col])
             self.tree.column(col, width=widths[col], minwidth=80, stretch=col == "ports")
         self.tree.pack(fill=tk.BOTH, expand=True)
+        self.tree.bind("<Button-3>", self._show_device_menu)
+        self.tree.bind("<Double-1>", lambda _event: self._edit_selected_device())
 
         ttk.Label(parent, text="Log", style="Muted.TLabel").pack(anchor="w", pady=(12, 4))
         self.log = tk.Text(parent, height=8, bg="#020617", fg="#d1f7ff", insertbackground="#22d3ee", relief=tk.FLAT)
@@ -246,11 +250,12 @@ class LanternApp(tk.Tk):
             messagebox.showerror("Refresh failed", str(exc))
 
     def _populate_tree(self, observations: list[Observation]) -> None:
+        self._tree_devices.clear()
         for row_id in self.tree.get_children():
             self.tree.delete(row_id)
         for obs in sorted(observations, key=lambda item: tuple(int(part) for part in item.ip.split("."))):
             risk = score_observation(obs)
-            self.tree.insert(
+            row_id = self.tree.insert(
                 "",
                 tk.END,
                 values=(
@@ -264,6 +269,83 @@ class LanternApp(tk.Tk):
                     ", ".join(port.label for port in obs.ports),
                 ),
             )
+            self._tree_devices[row_id] = obs
+
+    def _show_device_menu(self, event: tk.Event) -> None:
+        row_id = self.tree.identify_row(event.y)
+        if not row_id:
+            return
+        self.tree.selection_set(row_id)
+        device = self._tree_devices.get(row_id)
+        if device is None:
+            return
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label="Edit label / owner / notes", command=self._edit_selected_device)
+        menu.add_separator()
+        menu.add_command(label="Copy IP", command=lambda: self._copy_text(device.ip, "IP copied"))
+        if device.mac:
+            menu.add_command(label="Copy MAC", command=lambda: self._copy_text(device.mac or "", "MAC copied"))
+        http_url = self._first_web_url(device)
+        if http_url:
+            menu.add_separator()
+            menu.add_command(label=f"Open {http_url}", command=lambda: webbrowser.open(http_url))
+        menu.add_separator()
+        menu.add_command(label="Save as baseline…", command=self._save_baseline_dialog)
+        menu.add_command(label="Refresh inventory", command=self._refresh_inventory)
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _selected_device(self) -> Observation | None:
+        selected = self.tree.selection()
+        if not selected:
+            return None
+        return self._tree_devices.get(selected[0])
+
+    def _edit_selected_device(self) -> None:
+        device = self._selected_device()
+        if device is None:
+            return
+        label = simpledialog.askstring("Device label", "Friendly label", initialvalue=device.label or "", parent=self)
+        if label is None:
+            return
+        owner = simpledialog.askstring("Device owner", "Owner / function", initialvalue=device.owner or "", parent=self)
+        if owner is None:
+            return
+        notes = simpledialog.askstring("Device notes", "Notes", initialvalue=device.notes or "", parent=self)
+        if notes is None:
+            return
+        try:
+            self._inventory().label_device(device.mac or device.ip, label=label, owner=owner, notes=notes)
+            self._log(f"Updated device context: {device.ip}")
+            self._refresh_inventory()
+        except Exception as exc:
+            messagebox.showerror("Update failed", str(exc))
+
+    def _copy_text(self, text: str, status: str) -> None:
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self.status.set(status)
+
+    def _first_web_url(self, device: Observation) -> str | None:
+        ports = {(port.protocol, port.number) for port in device.ports}
+        for port in (443, 8443, 5001, 8920):
+            if ("tcp", port) in ports:
+                suffix = "" if port == 443 else f":{port}"
+                return f"https://{device.ip}{suffix}/"
+        for port in (80, 81, 800, 5000, 5006, 8000, 8001, 8080, 8096, 10000):
+            if ("tcp", port) in ports:
+                suffix = "" if port == 80 else f":{port}"
+                return f"http://{device.ip}{suffix}/"
+        return None
+
+    def _save_baseline_dialog(self) -> None:
+        name = simpledialog.askstring("Save baseline", "Baseline name", initialvalue="known-good", parent=self)
+        if not name:
+            return
+        try:
+            self._inventory().mark_baseline(name.strip())
+            self._log(f"Saved baseline: {name.strip()}")
+        except Exception as exc:
+            messagebox.showerror("Baseline failed", str(exc))
 
     def _export(self, export_format: str) -> None:
         try:

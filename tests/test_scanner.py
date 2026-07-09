@@ -2,13 +2,32 @@ from click.testing import CliRunner
 
 from lantern.cli import main
 from lantern.inventory import Observation, Port
-from lantern.scanner import observations_from_neighbor_csv, parse_ports, parse_targets
+from lantern.scanner import PortSpec, observations_from_neighbor_csv, parse_ports, parse_targets, scan_targets
 
 
 def test_parse_ports_profiles_and_ranges():
     assert 23 in parse_ports("quick")
     assert 32400 in parse_ports("extended")
     assert parse_ports("22,80,8000-8002") == [22, 80, 8000, 8001, 8002]
+
+
+def test_parse_ports_supports_protocols_and_nas_profile():
+    ports = parse_ports("nas")
+    assert PortSpec("tcp", 445) in ports
+    assert PortSpec("tcp", 2049) in ports
+    assert PortSpec("udp", 161) in ports
+    assert parse_ports("tcp/22,udp/53") == [PortSpec("tcp", 22), PortSpec("udp", 53)]
+
+
+def test_scan_targets_routes_udp_specs(monkeypatch):
+    def fake_scan_port(ip, port, timeout):
+        assert ip == "10.0.0.50"
+        assert timeout == 0.1
+        return Port(protocol=port.protocol, number=port.number, service="domain")
+
+    monkeypatch.setattr("lantern.scanner.scan_port", fake_scan_port)
+    scanned = scan_targets([Observation(ip="10.0.0.50")], [PortSpec("udp", 53)], timeout=0.1)
+    assert scanned[0].ports == [Port(protocol="udp", number=53, service="domain")]
 
 
 def test_parse_targets_cidr_guard():

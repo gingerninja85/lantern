@@ -27,6 +27,7 @@ Most small network scanner projects stop at “here are the hosts and open ports
 
 - Attach human labels, owners, and notes to devices by IP or MAC.
 - Native **safe TCP connect scanner** for Windows/Linux without requiring Nmap.
+- Protocol-aware TCP/UDP port profiles for common NAS, admin, media, VPN, and management services.
 - Auto-discover Windows LAN devices from **Get-NetNeighbor** / local ARP evidence.
 - Ingest **Nmap XML** service scans.
 - Ingest **ARP/router/Windows neighbor CSV** exports.
@@ -36,13 +37,20 @@ Most small network scanner projects stop at “here are the hosts and open ports
 - Export inventory as **JSON or CSV**.
 - Optional **Tkinter GUI** for people who prefer buttons over command-line flags.
 - Score common home-network risks:
+  - FTP
   - Telnet
   - SMB / NetBIOS
+  - AFP / NFS
   - UPnP
+  - SNMP
   - RTSP camera streams
   - RDP
+  - VNC
+  - MQTT / Redis / database ports
   - embedded/admin HTTP
   - CPE WAN management
+- Include per-finding remediation guidance in Markdown/HTML reports.
+- Right-click GUI device actions: edit labels/owners/notes, copy IP/MAC, open web consoles, save baselines, refresh.
 - Emit plain Markdown or a polished cyberpunk-style standalone HTML report.
 
 ## Quick start
@@ -126,6 +134,29 @@ lantern --db home.sqlite report --baseline known-good --format html --output rep
 | `lantern report [--baseline NAME]` | Print a Markdown risk/change report |
 | `lantern report --format html --output report.html` | Write a standalone styled HTML dashboard |
 
+## Port profiles
+
+Lantern defaults to a mixed TCP/UDP `quick` profile aimed at home LAN/NAS review. Bare custom port numbers are treated as TCP for compatibility; use `udp/53` or `tcp/80` when you need to force a protocol.
+
+Useful profiles:
+
+| Profile | Purpose |
+|---|---|
+| `quick` | Common home LAN/NAS/admin/media/security ports |
+| `nas` / `storage` | SMB, NFS, AFP, FTP, NAS web consoles, SNMP/UPnP |
+| `admin` / `web` | HTTP/HTTPS/admin console ports |
+| `extended` | Wider safe TCP/UDP review profile |
+
+Examples:
+
+```bash
+lantern scan --ports nas
+lantern scan --ports admin
+lantern scan --ports tcp/22,tcp/80,udp/53,udp/161
+```
+
+UDP scanning is conservative: Lantern only records a UDP port when the service responds. No UDP result means “no response”, not proof that the port is closed.
+
 ## Example output
 
 ```markdown
@@ -172,7 +203,6 @@ python -m ruff check .
 - ✅ Device labels/owners and notes.
 - ✅ JSON/CSV export.
 - OUI vendor enrichment.
-- Report screenshots/assets for GitHub README polish.
 - Optional lightweight web dashboard.
 - Scheduled scans and alert diff summaries.
 

@@ -55,7 +55,7 @@ REPORT_TEMPLATE = Template(
 {% for row in rows -%}
 {% if row.risk.findings -%}
 ### {{ row.device.ip }} {{ row.device.hostname or "" }}
-{% for finding in row.risk.findings -%}
+{% for finding in row.finding_lines -%}
 - {{ finding }}
 {% endfor -%}
 {% endif -%}
@@ -216,7 +216,7 @@ a { color: var(--cyan); }
         {% set any_findings.value = true %}
         <div class="card">
           <h3><span class="mono">{{ row.device.ip|e }}</span> {{ (row.device.hostname or "")|e }}</h3>
-          {% for finding in row.risk.findings %}<div class="finding">{{ finding|e }}</div>{% endfor %}
+          {% for finding in row.finding_lines %}<div class="finding">{{ finding|e }}</div>{% endfor %}
         </div>
       {% endif %}
     {% endfor %}
@@ -245,6 +245,7 @@ class ReportRow:
     device: Observation
     risk: Risk
     services: str
+    finding_lines: list[str]
 
 
 def _report_rows(inventory: Inventory) -> list[ReportRow]:
@@ -256,6 +257,10 @@ def _report_rows(inventory: Inventory) -> list[ReportRow]:
                 device=device,
                 risk=risk,
                 services=", ".join(port.label for port in device.ports),
+                finding_lines=[
+                    f"{finding} — Fix: {remediation}"
+                    for finding, remediation in zip(risk.findings, risk.remediations, strict=False)
+                ],
             )
         )
     return sorted(rows, key=lambda row: (-row.risk.score, row.device.ip))
